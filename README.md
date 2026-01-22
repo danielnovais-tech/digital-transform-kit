@@ -60,6 +60,26 @@ Digital Transform Kit #1 is designed for:
 - **Measurable Results**: Track progress with clear metrics and KPIs
 - **Sustainable Change**: Build capabilities for continuous innovation
 
+## Contributing
+
+We welcome contributions! This project includes comprehensive automation and quality tools to ensure high standards.
+
+### How to Contribute
+
+Please read our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
+- Opening Pull Requests
+- Commit message standards (Conventional Commits)
+- Branch naming conventions
+- Review process
+
+### Automated Checks
+
+This repository includes several automated quality checks:
+- **CodeQL Security Analysis**: Scans for security vulnerabilities
+- **Markdown Linting**: Ensures documentation quality
+- **Automated PR Labeling**: Categorizes PRs based on content
+- **Dependabot**: Keeps dependencies up-to-date
+
 ## Support
 
 For questions, feedback, or support requests, please open an issue in this repository.
