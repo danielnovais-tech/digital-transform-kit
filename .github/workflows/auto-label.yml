@@ -1,0 +1,141 @@
+name: Auto Label PRs
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto-label:
+    name: Automatically Label Pull Requests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Auto-label based on PR content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prTitle = context.payload.pull_request.title.toLowerCase();
+            const prBody = (context.payload.pull_request.body || '').toLowerCase();
+            const prContent = `${prTitle} ${prBody}`;
+            
+            // Define label mapping with keywords
+            const labelMappings = {
+              'enhancement': ['feat', 'feature', 'add', 'implement', 'enhance', 'new'],
+              'bugfix': ['fix', 'bug', 'resolve', 'correct', 'patch', 'repair'],
+              'documentation': ['docs', 'documentation', 'readme', 'guide', 'comment'],
+              'refactor': ['refactor', 'cleanup', 'restructure', 'optimize', 'improve']
+            };
+            
+            // Additional labels for special cases
+            const specialLabels = {
+              'dependencies': ['dependency', 'dependencies', 'dependabot', 'upgrade', 'update package'],
+              'ci': ['ci', 'workflow', 'github actions', 'pipeline', 'automation'],
+              'security': ['security', 'vulnerability', 'cve', 'exploit'],
+              'breaking-change': ['breaking change', 'breaking', 'major version']
+            };
+            
+            // Combine all label mappings
+            const allMappings = { ...labelMappings, ...specialLabels };
+            
+            const labelsToAdd = new Set();
+            
+            // Check for matching keywords
+            for (const [label, keywords] of Object.entries(allMappings)) {
+              for (const keyword of keywords) {
+                if (prContent.includes(keyword)) {
+                  labelsToAdd.add(label);
+                  break;
+                }
+              }
+            }
+            
+            // Convert Set to Array
+            const labels = Array.from(labelsToAdd);
+            
+            // If no labels matched, add 'needs-triage'
+            if (labels.length === 0) {
+              labels.push('needs-triage');
+            }
+            
+            // Get current labels
+            const currentLabels = context.payload.pull_request.labels.map(l => l.name);
+            
+            // Only add labels that don't already exist
+            const newLabels = labels.filter(l => !currentLabels.includes(l));
+            
+            if (newLabels.length > 0) {
+              console.log(`Adding labels: ${newLabels.join(', ')}`);
+              
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: newLabels
+              });
+            } else {
+              console.log('No new labels to add');
+            }
+
+      - name: Add size label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get PR diff stats
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            const additions = pr.data.additions;
+            const deletions = pr.data.deletions;
+            const totalChanges = additions + deletions;
+            
+            let sizeLabel = '';
+            
+            if (totalChanges < 10) {
+              sizeLabel = 'size/XS';
+            } else if (totalChanges < 50) {
+              sizeLabel = 'size/S';
+            } else if (totalChanges < 200) {
+              sizeLabel = 'size/M';
+            } else if (totalChanges < 500) {
+              sizeLabel = 'size/L';
+            } else {
+              sizeLabel = 'size/XL';
+            }
+            
+            // Remove existing size labels
+            const currentLabels = context.payload.pull_request.labels;
+            const sizeLabelsToRemove = currentLabels
+              .filter(l => l.name.startsWith('size/'))
+              .map(l => l.name);
+            
+            for (const label of sizeLabelsToRemove) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                name: label
+              }).catch(() => {
+                // Ignore errors if label doesn't exist
+              });
+            }
+            
+            // Add new size label
+            console.log(`Adding size label: ${sizeLabel} (${totalChanges} changes)`);
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [sizeLabel]
+            });

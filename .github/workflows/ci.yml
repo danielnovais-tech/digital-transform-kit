@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Job to detect what package managers are present
+  detect-package-managers:
+    name: Detect Package Managers
+    runs-on: ubuntu-latest
+    outputs:
+      has-npm: ${{ steps.detect.outputs.has-npm }}
+      has-python: ${{ steps.detect.outputs.has-python }}
+      has-go: ${{ steps.detect.outputs.has-go }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect package managers
+        id: detect
+        run: |
+          echo "has-npm=$(test -f package.json && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "has-python=$(test -f requirements.txt -o -f setup.py -o -f pyproject.toml && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "has-go=$(test -f go.mod && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+  # Conditional Node.js/npm checks
+  node-checks:
+    name: Node.js Checks
+    runs-on: ubuntu-latest
+    needs: detect-package-managers
+    if: needs.detect-package-managers.outputs.has-npm == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        if: hashFiles('.eslintrc*', 'eslint.config.*') != ''
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: Run tests
+        if: hashFiles('**/*.test.js', '**/*.spec.js', '**/*.test.ts', '**/*.spec.ts') != ''
+        run: npm test --if-present
+
+      - name: Build project
+        run: npm run build --if-present
+
+  # Conditional Python checks
+  python-checks:
+    name: Python Checks
+    runs-on: ubuntu-latest
+    needs: detect-package-managers
+    if: needs.detect-package-managers.outputs.has-python == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run linter (flake8)
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        continue-on-error: true
+
+      - name: Run tests (pytest)
+        if: hashFiles('**/*test*.py') != ''
+        run: |
+          pip install pytest
+          pytest
+        continue-on-error: true
+
+  # Conditional Go checks
+  go-checks:
+    name: Go Checks
+    runs-on: ubuntu-latest
+    needs: detect-package-managers
+    if: needs.detect-package-managers.outputs.has-go == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  # General file checks (always run)
+  general-checks:
+    name: General Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for trailing whitespace
+        run: |
+          ! git grep -I --line-number --perl-regexp '\s+$' -- ':!*.md' || {
+            echo "Error: Trailing whitespace found"
+            git grep -I --line-number --perl-regexp '\s+$' -- ':!*.md'
+            exit 1
+          }
+        continue-on-error: true
+
+      - name: Check YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .github/
+          config_file: .github/yamllint-config.yml
+          strict: false
+        continue-on-error: true
+
+      - name: Validate workflows
+        run: |
+          echo "Checking workflow syntax..."
+          for workflow in .github/workflows/*.yml .github/workflows/*.yaml; do
+            if [ -f "$workflow" ]; then
+              echo "Checking $workflow"
+              # Basic YAML syntax check
+              python3 -c "import yaml; yaml.safe_load(open('$workflow'))" || exit 1
+            fi
+          done
