@@ -96,10 +96,10 @@ PR Opened
 
 **What it does**:
 - Scans code for security vulnerabilities
-- Analyzes JavaScript and Python code
+- Automatically detects and analyzes supported languages in the repository
 - Reports findings to Security tab
 
-**Languages**: JavaScript, Python (automatically detected)
+**Languages**: Automatically detected (supports C++, C#, Go, Java, JavaScript, Python, Ruby, Swift)
 
 **Permissions**: `actions: read`, `contents: read`, `security-events: write`
 
@@ -116,7 +116,7 @@ PR Opened
 - `bugfix`: fix, bug, resolve, correct, patch, repair
 - `documentation`: docs, documentation, readme, guide, comment
 - `refactor`: refactor, cleanup, restructure, optimize, improve
-- `dependencies`: dependency, dependencies, dependabot, upgrade
+- `dependencies`: dependency, dependencies, dependabot, upgrade, update package
 - `ci`: ci, workflow, github actions, pipeline, automation
 - `security`: security, vulnerability, cve, exploit
 - `breaking-change`: breaking change, breaking, major version
@@ -153,14 +153,14 @@ Applied by the auto-label workflow based on PR content:
 
 | Label | Description | Keywords |
 |-------|-------------|----------|
-| `enhancement` | New features or improvements | feat, feature, add, implement |
-| `bugfix` | Bug fixes | fix, bug, resolve, correct |
-| `documentation` | Documentation changes | docs, documentation, readme |
-| `refactor` | Code refactoring | refactor, cleanup, restructure |
-| `dependencies` | Dependency updates | dependency, dependabot, upgrade |
-| `ci` | CI/CD changes | ci, workflow, github actions |
-| `security` | Security-related changes | security, vulnerability, cve |
-| `breaking-change` | Breaking changes | breaking change, major version |
+| `enhancement` | New features or improvements | feat, feature, add, implement, enhance, new |
+| `bugfix` | Bug fixes | fix, bug, resolve, correct, patch, repair |
+| `documentation` | Documentation changes | docs, documentation, readme, guide, comment |
+| `refactor` | Code refactoring | refactor, cleanup, restructure, optimize, improve |
+| `dependencies` | Dependency updates | dependency, dependencies, dependabot, upgrade, update package |
+| `ci` | CI/CD changes | ci, workflow, github actions, pipeline, automation |
+| `security` | Security-related changes | security, vulnerability, cve, exploit |
+| `breaking-change` | Breaking changes | breaking change, breaking, major version |
 | `size/XS` to `size/XL` | PR size indicator | Automatically calculated |
 
 ### Manual Labels
